@@ -1,8 +1,12 @@
-// 设置优选地址，不带端口号默认8443，不支持非TLS订阅生成
+
+// 部署完成后在网址后面加上这个，获取订阅器默认节点，/auto
+
+let mytoken= 'auto';//快速订阅访问入口, 留空则不启动快速订阅
+
+// 设置优选地址，不带端口号默认443，不支持非TLS订阅生成
 let addresses = [
-	'www.visa.com.hk:2096#假装是香港',
-	'icook.tw:2053#假装是台湾',
-	'cloudflare.cfgo.cc#真的是美国'
+	'icook.tw:2053#优选域名',
+	'cloudflare.cfgo.cc#优选官方线路',
 ];
 
 // 设置优选地址api接口
@@ -16,19 +20,18 @@ let addressescsv = [
 ];
 
 let subconverter = "api.v1.mk"; //在线订阅转换后端，目前使用肥羊的订阅转换功能。支持自建psub 可自行搭建https://github.com/bulianglin/psub
-let subconfig = "https://raw.githubusercontent.com/cmliu/edgetunnel/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //订阅配置文件
+let subconfig = "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //订阅配置文件
 
 let link = '';
 let edgetunnel = 'ed';
 let RproxyIP = 'false';
 let proxyIPs = [
-	'cdn.xn--b6gac.eu.org',
-	'cdn-all.xn--b6gac.eu.org',
-	'edgetunnel.anycast.eu.org',
+	'proxyip.aliyun.fxxk.dedyn.io',
+	'proxyip.multacom.fxxk.dedyn.io',
+	'proxyip.vultr.fxxk.dedyn.io',
 ];
 let CMproxyIPs = [
-	//{ proxyIP: "proxyip.fxxk.dedyn.io", type: "US" },
-	//{ proxyIP: "proxyip.sg.fxxk.dedyn.io", type: "SG" },
+	{ proxyIP: "proxyip.fxxk.dedyn.io", type: "HK" },
 ];
 let BotToken ='';
 let ChatID =''; 
@@ -36,7 +39,13 @@ let proxyhosts = [//本地代理域名池
 	//'ppfv2tl9veojd-maillazy.pages.dev',
 ];
 let proxyhostsURL = 'https://raw.githubusercontent.com/cmliu/CFcdnVmess2sub/main/proxyhosts';//在线代理域名池URL
-let EndPS = '';
+let EndPS = '';//节点名备注内容
+
+let FileName = 'WorkerVless2sub';
+let SUBUpdateTime = 6; 
+let total = 99;//PB
+//let timestamp = now;
+let timestamp = 4102329600000;//2099-12-31
 
 async function sendMessage(type, ip, add_data = "") {
 	if ( BotToken !== '' && ChatID !== ''){
@@ -78,7 +87,12 @@ async function getAddressesapi() {
 			}
 		
 			const text = await response.text();
-			const lines = text.split('\n');
+			let lines;
+			if (text.includes('\r\n')){
+				lines = text.split('\r\n');
+			} else {
+				lines = text.split('\n');
+			}
 			const regex = /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?(#.*)?$/;
 		
 			const apiAddresses = lines.map(line => {
@@ -113,7 +127,12 @@ async function getAddressescsv() {
 			}
 		
 			const text = await response.text();// 使用正确的字符编码解析文本内容
-			const lines = text.split('\n');
+			let lines;
+			if (text.includes('\r\n')){
+				lines = text.split('\r\n');
+			} else {
+				lines = text.split('\n');
+			}
 		
 			// 检查CSV头部是否包含必需字段
 			const header = lines[0].split(',');
@@ -154,22 +173,32 @@ async function getAddressescsv() {
 
 let protocol;
 export default {
-	async fetch (request) {
+	async fetch (request, env) {
+		mytoken = env.TOKEN || mytoken;
+		BotToken = env.TGTOKEN || BotToken;
+		ChatID = env.TGID || ChatID; 
+		subconverter = env.SUBAPI || subconverter;
+		subconfig = env.SUBCONFIG || subconfig;
 		const userAgentHeader = request.headers.get('User-Agent');
 		const userAgent = userAgentHeader ? userAgentHeader.toLowerCase() : "null";
 		const url = new URL(request.url);
+		const format = url.searchParams.get('format') ? url.searchParams.get('format').toLowerCase() : "null";
 		let host = "";
 		let uuid = "";
 		let path = "";
+		let UD = Math.floor(((timestamp - Date.now())/timestamp * 99 * 1099511627776 * 1024)/2);
+		total = total * 1099511627776 * 1024;
+		let expire= Math.floor(timestamp / 1000) ;
 
-		if (url.pathname.includes("/auto") || url.pathname.includes("/404") || url.pathname.includes("/sos")) {
-			host = "edgetunnel-2z2.pages.dev";
-			uuid = "30e9c5c8-ed28-4cd9-b008-dc67277f8b02";
-			path = "/?ed=2048";
-			//edgetunnel = 'cmliu';
-			//RproxyIP = 'true';
-			
-			if (url.pathname.includes("/sos")) {
+		if (mytoken !== '' && url.pathname.includes(mytoken)) {
+			host = env.HOST || "edgetunnel-2z2.pages.dev";
+			uuid = env.UUID || "30e9c5c8-ed28-4cd9-b008-dc67277f8b02";
+			path = env.PATH || "/?ed=2048";
+			edgetunnel = env.ED || edgetunnel;
+			RproxyIP = env.RPROXYIP || RproxyIP;
+
+			const hasSos = url.searchParams.has('sos');
+			if (hasSos) {
 				const hy2Url = "https://hy2sub.pages.dev";
 				try {
 					const subconverterResponse = await fetch(hy2Url);
@@ -190,6 +219,8 @@ export default {
 			host = url.searchParams.get('host');
 			uuid = url.searchParams.get('uuid');
 			path = url.searchParams.get('path');
+			edgetunnel = url.searchParams.get('edgetunnel') || edgetunnel;
+			RproxyIP = url.searchParams.get('proxyip') || RproxyIP;
 			
 			if (!url.pathname.includes("/sub")) {
 				const responseText = `
@@ -247,8 +278,8 @@ export default {
 
 		if (userAgent.includes('telegram') || userAgent.includes('twitter') || userAgent.includes('miaoko')) {
 			return new Response('Hello World!');
-		} else if (userAgent.includes('clash')) {
-			const subconverterUrl = `https://${subconverter}/sub?target=clash&url=${encodeURIComponent(request.url)}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`;
+		} else if (userAgent.includes('clash') || (format === 'clash' && !userAgent.includes('subconverter'))) {
+			const subconverterUrl = `https://${subconverter}/sub?target=clash&url=${encodeURIComponent(request.url)}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=true&fdn=false&sort=false&new_name=true`;
 
 			try {
 				const subconverterResponse = await fetch(subconverterUrl);
@@ -260,7 +291,12 @@ export default {
 				const subconverterContent = await subconverterResponse.text();
 				
 				return new Response(subconverterContent, {
-					headers: { 'content-type': 'text/plain; charset=utf-8' },
+					headers: { 
+						"Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(FileName)}; filename=${FileName}`,
+						"content-type": "text/plain; charset=utf-8",
+						"Profile-Update-Interval": `${SUBUpdateTime}`,
+						"Subscription-Userinfo": `upload=${UD}; download=${UD}; total=${total}; expire=${expire}`,
+					},
 				});
 			} catch (error) {
 				return new Response(`Error: ${error.message}`, {
@@ -268,8 +304,8 @@ export default {
 					headers: { 'content-type': 'text/plain; charset=utf-8' },
 				});
 			}
-		} else if (userAgent.includes('sing-box') || userAgent.includes('singbox')){
-			const subconverterUrl = `https://${subconverter}/sub?target=singbox&url=${encodeURIComponent(request.url)}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=false&fdn=false&sort=false&new_name=true`;
+		} else if (userAgent.includes('sing-box') || userAgent.includes('singbox') || (format === 'singbox' && !userAgent.includes('subconverter'))){
+			const subconverterUrl = `https://${subconverter}/sub?target=singbox&url=${encodeURIComponent(request.url)}&insert=false&config=${encodeURIComponent(subconfig)}&emoji=true&list=false&tfo=false&scv=true&fdn=false&sort=false&new_name=true`;
 
 			try {
 			const subconverterResponse = await fetch(subconverterUrl);
@@ -281,7 +317,12 @@ export default {
 				const subconverterContent = await subconverterResponse.text();
 				
 				return new Response(subconverterContent, {
-					headers: { 'content-type': 'text/plain; charset=utf-8' },
+					headers: { 
+						"Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(FileName)}; filename=${FileName}`,
+						"content-type": "text/plain; charset=utf-8",
+						"Profile-Update-Interval": `${SUBUpdateTime}`,
+						"Subscription-Userinfo": `upload=${UD}; download=${UD}; total=${total}; expire=${expire}`,
+					},
 				});
 			} catch (error) {
 				return new Response(`Error: ${error.message}`, {
@@ -290,7 +331,7 @@ export default {
 				});
 			}
 		} else {
-			if(url.searchParams.get('host') && (url.searchParams.get('host').includes('workers.dev') || url.searchParams.get('host').includes('pages.dev'))) {
+			if(host.includes('workers.dev') || host.includes('pages.dev')) {
 				if (proxyhostsURL) {
 					try {
 						const response = await fetch(proxyhostsURL); 
@@ -323,7 +364,7 @@ export default {
 			const uniqueAddresses = [...new Set(addresses)];
 			
 			const responseBody = uniqueAddresses.map(address => {
-				let port = "8443";
+				let port = "443";
 				let addressid = address;
 			
 				if (address.includes(':') && address.includes('#')) {
@@ -346,8 +387,6 @@ export default {
 					addressid = addressid.split(':')[0];
 				}
 				
-				edgetunnel = url.searchParams.get('edgetunnel') || edgetunnel;
-				RproxyIP = url.searchParams.get('proxyip') || RproxyIP;
 				if (edgetunnel.trim() === 'cmliu' && RproxyIP.trim() === 'true') {
 					// 将addressid转换为小写
 					let lowerAddressid = addressid.toLowerCase();
@@ -372,13 +411,15 @@ export default {
 					}
 				}
 				
+				let 伪装域名 = host ;
 				let 最终路径 = path ;
-				if(url.searchParams.get('host') && (url.searchParams.get('host').includes('workers.dev') || url.searchParams.get('host').includes('pages.dev'))) {
-					最终路径 = `/${url.searchParams.get('host')}${path}`;
-					host = proxyhosts[Math.floor(Math.random() * proxyhosts.length)];
-					EndPS = ' 已启用临时域名中转服务，请尽快绑定自定义域！';
+				let 节点备注 = EndPS ;
+				if(proxyhosts && (host.includes('workers.dev') || host.includes('pages.dev'))) {
+					最终路径 = `/${host}${path}`;
+					伪装域名 = proxyhosts[Math.floor(Math.random() * proxyhosts.length)];
+					节点备注 = `${EndPS} 已启用临时域名中转服务，请尽快绑定自定义域！`;
 				}
-				const vlessLink = `vless://${uuid}@${address}:${port}?encryption=none&security=tls&sni=${host}&fp=random&type=ws&host=${host}&path=${encodeURIComponent(最终路径)}#${encodeURIComponent(addressid + EndPS)}`;
+				const vlessLink = `vless://${uuid}@${address}:${port}?encryption=none&security=tls&sni=${伪装域名}&fp=random&type=ws&host=${伪装域名}&path=${encodeURIComponent(最终路径)}#${encodeURIComponent(addressid + 节点备注)}`;
 			
 				return vlessLink;
 			}).join('\n');
@@ -386,8 +427,14 @@ export default {
 			const combinedContent = responseBody + '\n' + link; // 合并内容
 			const base64Response = btoa(combinedContent); // 重新进行 Base64 编码
 
+
 			const response = new Response(base64Response, {
-			headers: { 'content-type': 'text/plain' },
+				headers: { 
+					//"Content-Disposition": `attachment; filename*=utf-8''${encodeURIComponent(FileName)}; filename=${FileName}`,
+					"content-type": "text/plain; charset=utf-8",
+					"Profile-Update-Interval": `${SUBUpdateTime}`,
+					"Subscription-Userinfo": `upload=${UD}; download=${UD}; total=${total}; expire=${expire}`,
+				},
 			});
 
 			return response;
