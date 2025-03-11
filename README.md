@@ -47,6 +47,7 @@
    - 添加变量 `ADDAPI`/`ADDNOTLSAPI` 为 **优选IP地址txt文件** 的 URL。例如：
    ```url
    https://raw.githubusercontent.com/cmliu/WorkerVless2sub/main/addressesapi.txt
+   https://github.com/zyjia/WorkerVless2sub/releases/download/CFBestIP/cfbestip.txt 
    https://raw.githubusercontent.com/cmliu/WorkerVless2sub/main/addressesipv6api.txt
    ```
 
