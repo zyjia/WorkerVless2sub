@@ -22,6 +22,7 @@ jobs:
 
     - name: get cmliu ip
       run: |
+        rm -f addressesapi.txt
         curl https://cfip.kaiche.tk/ > ip_list5.txt
         curl https://addressesapi.090227.xyz/CloudFlareYes > ip_list8.txt                   
         cat ip_list3.txt >> addressesapi.txt
