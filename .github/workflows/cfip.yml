@@ -1,0 +1,43 @@
+
+name: 优选IP
+
+on:
+  workflow_dispatch:  # 手动触发
+  schedule:
+    - cron: '0 8 * * 0'
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo  
+      uses: actions/checkout@v3
+
+       
+    - name: get my ip
+      run: |
+        curl https://box.zyjia.pp.ua/app/warp/ipull.php > ip_list3.txt
+        sed -i '/^\s*$/d' ip_list3.txt
+        
+
+    - name: get cmliu ip
+      run: |
+        rm -f addressesapi.txt
+        curl https://cfip.kaiche.tk/ > ip_list5.txt
+        curl https://addressesapi.090227.xyz/CloudFlareYes > ip_list8.txt                   
+        cat ip_list3.txt >> addressesapi.txt
+        cat ip_list5.txt >> addressesapi.txt        
+        rm -f ip_list3.txt ip_list5.txt ip_list8.txt
+
+    - name: Clean
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git checkout --orphan latest_branch
+        git add -A
+        git commit -am "自动获取优选IP"
+        git branch -D main
+        git branch -m main
+
+    - name: Push
+      run: git push -f origin main
