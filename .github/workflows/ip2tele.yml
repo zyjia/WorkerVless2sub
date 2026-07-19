@@ -1,0 +1,41 @@
+name: Get Data and Send Telegram By PHP
+
+on:
+  workflow_dispatch:  
+
+jobs:
+
+  get-data:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.0'
+        
+    - name: Install Dependencies  
+      run: |
+        composer require telegram-bot/api
+        
+    - name: Get Data
+      run: |
+        php <<EOF
+        $apiUrl = "https://box.glms.tk/app/warp/ipush.php";
+        $data = file_get_contents($apiUrl); 
+        EOF
+        
+    - name: Send Telegram 
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TG_USER_ID }}
+        
+      run: |
+        php <<EOF
+        $telegram = new TelegramBot($env:TELEGRAM_BOT_TOKEN);
+        $telegram->sendMessage($env:TELEGRAM_CHAT_ID, $data);  
+        EOF
